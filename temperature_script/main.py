@@ -1,6 +1,6 @@
 import os
-from pathlib import Path
 import json
+from pathlib import Path
 from combine_raw_data import CombineRawData
 from highlight_switch_points import HighlightSwitchPoints
 from extract_switch_events import ExtractSwitchEvents
@@ -16,16 +16,20 @@ def ask_model_number() -> int:
             print("Please enter a valid number.")
 
 model_num = ask_model_number()
+
 MODEL = f"TMA{model_num}"
 
 # Path to this script
 script_dir = Path(__file__).resolve().parent
 
-# Path to config file
+# Path to main config file
+main_config_path = Path(script_dir) / "main_config.json"
+
+# Path to model config file
 json_path = Path(script_dir) / ".." / ".." / "Temperature_Performance" / "TMA DAQ" / MODEL / f"tma{model_num}_config.json"
 json_path = json_path.resolve()  # get absolute path
 
-config = json.loads(json_path.read_text())
+config = json.loads(main_config_path.read_text()) | json.loads(json_path.read_text())
 print(config)
 
 # Relative path to data

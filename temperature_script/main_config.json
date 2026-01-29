@@ -1,0 +1,20 @@
+{
+  "outputType" : "Current",
+  "resistor" : 270,
+  "outputMin": 0.004,
+  "outputMax": 0.020,
+  "digitalStartCol": 4,
+  "daqMetaData" : 6,
+  "pressureCol" : 4,
+  "highlightColors": {
+    "green": "FFB6E7B9",
+    "yellow": "FFFDFD96"
+  },
+  "protectedHeaders" : [
+    "Sample",
+    "Time (s)",
+    "Date/Time",
+    "T200-5000P (V)",
+    "Pressure (psi)"
+  ]
+}
