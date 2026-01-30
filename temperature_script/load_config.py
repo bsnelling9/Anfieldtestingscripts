@@ -1,17 +1,15 @@
 import json
 from pathlib import Path
-from config import config
+from config_types import TMAConfig, HighlightColors
 
-def load_config(model_num: int) -> dict:
-    """
-    Load default config, then override with model-specific JSON.
-    """
 
+def load_config(model_num: int) -> TMAConfig:
     model = f"TMA{model_num}"
 
     script_dir = Path(__file__).resolve().parent
 
-    json_path = (
+    default_path = script_dir / "main_config.json"
+    model_path = (
         script_dir
         / ".."
         / ".."
@@ -21,13 +19,38 @@ def load_config(model_num: int) -> dict:
         / f"tma{model_num}_config.json"
     ).resolve()
 
-    config = DEFAULT_CONFIG.copy()
+    if not default_path.exists():
+        raise FileNotFoundError(f"Default config not found: {default_path}")
 
-    if not json_path.exists():
-        raise FileNotFoundError(f"Config file not found: {json_path}")
+    if not model_path.exists():
+        raise FileNotFoundError(f"Model config not found: {model_path}")
 
-    with open(json_path, "r") as f:
-        model_config = json.load(f)
+    defaults = json.loads(default_path.read_text())
+    overrides = json.loads(model_path.read_text())
 
-    config.update(model_config)  # model overrides defaults
-    return config
+    # Shallow merge
+    merged = {**defaults, **overrides}
+
+    # Nested merge for highlightColors
+    merged["highlightColors"] = {
+        **defaults.get("highlightColors", {}),
+        **overrides.get("highlightColors", {}),
+    }
+
+    return TMAConfig(
+        model=merged["model"],
+        transducer=merged["transducer"],
+        pressure=merged["pressure"],
+
+        outputType=merged["outputType"],
+        resistor=merged["resistor"],
+        outputMin=merged["outputMin"],
+        outputMax=merged["outputMax"],
+
+        digitalStartCol=merged["digitalStartCol"],
+        daqMetaData=merged["daqMetaData"],
+        pressureCol=merged["pressureCol"],
+
+        highlightColors=HighlightColors(**merged["highlightColors"]),
+        protectedHeaders=merged["protectedHeaders"],
+    )
