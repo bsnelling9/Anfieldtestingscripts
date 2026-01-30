@@ -5,6 +5,7 @@ from combine_raw_data import CombineRawData
 from highlight_switch_points import HighlightSwitchPoints
 from extract_switch_events import ExtractSwitchEvents
 from highlight_registry import HighlightRegistry
+import time
 #from extract_resgistry import export_registry_in_excel
 
 def ask_model_number() -> int:
@@ -45,18 +46,22 @@ for folder in folders:
     registry = HighlightRegistry()
 
     # Highlight switch points (passing the registry)
+    start_processing = time.time()
+
+   
     highlightSwitchPoints = HighlightSwitchPoints(combined_file, config, registry)
     highlightSwitchPoints.highlight_switch_points()
 
+    end_processing = time.time()
+    print(f"Processing rows took {end_processing - start_processing:.2f} seconds")
     # Extract switch events (passing the registry)
-    extractor = ExtractSwitchEvents(combined_file, config, registry)
     
-    # Note: No need to pass green_rows/yellow_rows anymore! The registry has them.
-    extractor.create_switch_events_sheet()
-
-    # Extract switch events
+    start_processing = time.time()
     extractor = ExtractSwitchEvents(combined_file, config, registry)
     extractor.create_switch_events_sheet()
+    
+    end_processing = time.time()
+    print(f"ExtractSwitchEvents took {end_processing - start_processing:.2f} seconds")
 
     # Export registry for inspection in the same Excel file
     #export_registry_in_excel(combined_file, registry)
