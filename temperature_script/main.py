@@ -6,7 +6,7 @@ from highlight_switch_points import HighlightSwitchPoints
 from extract_switch_events import ExtractSwitchEvents
 from highlight_registry import HighlightRegistry
 import time
-#from extract_resgistry import export_registry_in_excel
+from extract_resgistry import export_registry_in_excel
 
 def ask_model_number() -> int:
     while True:

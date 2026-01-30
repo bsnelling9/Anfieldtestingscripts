@@ -26,12 +26,14 @@ class HighlightSwitchPoints:
 
     def highlight_switch_points(self):
         """
-        Highlights 1→0 as green, 0→1 as yellow.
-        Now populates the registry with metadata for other classes to use.
+        Detects switch is Open 1→0 as green, and closed 0→1 as yellow.
+        Highlights cells, and records the state in registry.
         """
         # Identify digital columns
-        digital_cols = [col for col in range(1, self.ws.max_column + 1)
-                    if self.ws.cell(row=1, column=col).value not in self.protected_headers]
+        digital_cols = [
+            col for col in range(1, self.ws.max_column + 1)
+            if self.ws.cell(row=1, column=col).value not in self.protected_headers
+        ]
 
         for col in digital_cols:
             header_name = self.ws.cell(row=1, column=col).value
@@ -40,15 +42,13 @@ class HighlightSwitchPoints:
             for row in range(3, self.ws.max_row + 1):
                 cell = self.ws.cell(row=row, column=col)
 
-                # GREEN
                 if prev_val == 1 and cell.value == 0:
                     cell.fill = self.green_fill
-                    self.registry.add_point(HighlightPoint(row, col, "GREEN", header_name, cell.value))
+                    self.registry.add_point(HighlightPoint(row, col, True, header_name, cell.value))
 
-                # YELLOW
                 elif prev_val == 0 and cell.value == 1:
                     cell.fill = self.yellow_fill
-                    self.registry.add_point(HighlightPoint(row, col, "YELLOW", header_name, cell.value))
+                    self.registry.add_point(HighlightPoint(row, col, False, header_name, cell.value))
 
                 prev_val = cell.value
 
