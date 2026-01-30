@@ -10,12 +10,12 @@ class CombineRawData:
     def __init__(self, folder_path: str, config: dict):
         self.folder_path = folder_path
         self.config = config
-        self.resistor: float = config["resistor"]
-        self.pressure_max: float = config["pressure"]
-        self.output_min: float = config["outputMin"]
-        self.output_max: float = config["outputMax"]
-        self.digital_start_col: int = config["digitalStartCol"]
-        self.daq_meta_data: int = config["daqMetaData"]
+        self.resistor: float = config.resistor
+        self.pressure: float = config.pressure
+        self.output_min: float = config.outputMin
+        self.output_max: float = config.outputMax
+        self.digital_start_col: int = config.digitalStartCol
+        self.daq_meta_data: int = config.daqMetaData
 
     def compute_pressure(self, voltage: float) -> float:
         """
@@ -24,7 +24,7 @@ class CombineRawData:
         Need to do one for voltage, have an error that only checks for current
         """
         outputRange = self.output_max - self.output_min
-        pressure = ((voltage / self.resistor) - self.output_min) / (outputRange / self.pressure_max)
+        pressure = ((voltage / self.resistor) - self.output_min) / (outputRange / self.pressure)
         return abs(max(pressure, 0))
 
     def combine_csvs(self, output_file: Optional[str] = None) -> str:
@@ -59,17 +59,16 @@ class CombineRawData:
         #Calculate pressure using iloc[:, 2] which selects the 3rd column
         df_pressure = df_analog.iloc[:, 2].apply(self.compute_pressure).to_frame("Pressure (psi)")
 
-        # Combine raw Analog and Digital with the calcualted Pressure inbetween
         df_combined = pd.concat([df_analog, df_pressure, df_digital], axis=1)
 
         # Determine output file
         if output_file is None:
+            
             folder_name = os.path.basename(self.folder_path)
             # Remove "DAQ_" prefix for naming
             folder_name = folder_name.replace("DAQ_", "")
             output_file = os.path.join(os.path.dirname(self.folder_path), f"{folder_name}_Processed.xlsx")
 
-        # Save Excel
         df_combined.to_excel(output_file, index=False)
         
         return output_file
