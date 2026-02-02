@@ -15,27 +15,27 @@ def export_registry_in_excel(file_path: str, registry: HighlightRegistry, sheet_
     ws = wb.create_sheet(sheet_name)
 
     # --- Write all HighlightPoints ---
-    ws.append(["Row", "Column", "Header", "Color Type", "Value"])
+    ws.append(["Row", "Column", "Header", "Is Open Circuit", "Value"])
     for col_idx, sessions in registry.columns.items():
         for session in sessions:
-            # GREEN point
             ws.append([
-                session.green_point.row,
-                session.green_point.col,
-                session.green_point.header,
-                session.green_point.color_type,
-                session.green_point.value
+                session.open_point.row,
+                session.open_point.col,
+                session.open_point.header,
+                True,
+                session.open_point.value
             ])
-            # YELLOW point
-            if session.yellow_point:
+            if session.close_point:
                 ws.append([
-                    session.yellow_point.row,
-                    session.yellow_point.col,
-                    session.yellow_point.header,
-                    session.yellow_point.color_type,
-                    session.yellow_point.value
-                ])
-
+                    session.close_point.row,
+                    session.close_point.col,
+                    session.close_point.header,
+                    False,
+                    session.close_point.value
+            ])
+    wb.save(file_path)
+    print(f"Registry exported in '{sheet_name}' sheet of {file_path}")
+"""
     # --- Optional: Add sessions summary ---
     ws.append([])  # blank row
     ws.append(["Sessions Summary"])
@@ -54,3 +54,4 @@ def export_registry_in_excel(file_path: str, registry: HighlightRegistry, sheet_
 
     wb.save(file_path)
     print(f"Registry exported in '{sheet_name}' sheet of {file_path}")
+    """
