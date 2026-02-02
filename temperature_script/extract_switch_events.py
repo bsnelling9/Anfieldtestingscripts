@@ -27,54 +27,54 @@ class ExtractSwitchEvents:
     """
     def create_switch_events_sheet(self, sheet_name: str = "SwitchEvents"):
 
-        # Stores all the rows where the switch opens or closes
+        # Stores all the rows where the switch opens or closes, and sorts them
         all_rows_set = set()
         
         for col_sessions in self.registry.get_sessions_by_column().values():
+            
             for session in col_sessions:
+                
                 all_rows_set.add(session.open_point.row)
+                
                 if session.close_point:
                     all_rows_set.add(session.close_point.row)
+
         all_rows = sorted(all_rows_set)
 
         # Stores the headers in an array, maybe could use a set as they're unique
         headers = [self.ws.cell(row=1, column=col).value for col in range(1, self.ws.max_column + 1)]
 
         # Initialize a dictionary of lists for each column
+        # TMA-7.0 NBR: [],
         data = {header: [] for header in headers}
 
         # this is a dictionary to quickly get a switch value (1/0) at a specified (row,col), which is a key
         # (97, 5): 0 where 97 is a row and 5 is a column (switch, TMA 7.0)
-        # basically avoids the .cell() call to look for the cell everytime
+        # Avoids the .cell() call to look for the cell everytime
         row_col_values = {}
         
-        for col_idx, col_sessions in self.registry.get_sessions_by_column().items():
-            row_col_values[(session.open_point.row, col_idx)] = session.open_point.value
-            if session.close_point:
-                row_col_values[(session.close_point.row, col_idx)] = session.close_point.value        
-        
-        # This tracks open and closed rows
+        # list of columns that hold the digital values of the switches
         digital_cols = list(range(self.digital_start_col, self.ws.max_column + 1))
-        
-        for col_idx, col_sessions in self.registry.get_sessions_by_column().items():
-                
-                for session in col_sessions:
-                    row_col_values[(session.open_point.row, col_idx)] = session.open_point.value
-                    if session.close_point:
-                        row_col_values[(session.close_point.row, col_idx)] = session.close_point.value
 
-        # --- 3. Track open and closed rows for differential logic ---
         open_rows_per_col = {col: set() for col in digital_cols}
         close_rows_per_col = {col: set() for col in digital_cols}
         
         for col_idx, col_sessions in self.registry.get_sessions_by_column().items():
-            
-            for session in col_sessions:
-                open_rows_per_col[col_idx].add(session.open_point.row)
-                if session.close_point:
-                    close_rows_per_col[col_idx].add(session.close_point.row)
-        # --- 5. Fill data dictionary row by row ---
 
+            for session in col_sessions:
+                
+                # store the value for later sheet output
+                row_col_values[(session.open_point.row, col_idx)] = session.open_point.value
+                if session.close_point:
+                    row_col_values[(session.close_point.row, col_idx)] = session.close_point.value
+
+                # track which rows are open/closed for differential logic
+                open_rows_per_col[col_idx].add(session.open_point.row)
+                
+                if session.close_point: 
+                    close_rows_per_col[col_idx].add(session.close_point.row)
+
+        # --- 5. Fill data dictionary row by row ---
         event_rows = []
         event_columns = set()
         closed_columns_in_event = set()
@@ -99,12 +99,14 @@ class ExtractSwitchEvents:
             event_rows.append(row)
            
             for col_idx in digital_cols:
+                
                 if row in open_rows_per_col[col_idx]:
                     event_columns.add(col_idx)
                 elif row in close_rows_per_col[col_idx] and col_idx in event_columns:
                     closed_columns_in_event.add(col_idx)
 
             if event_columns and event_columns == closed_columns_in_event:
+                
                 diff_row_data = [None] * len(headers)
                 diff_row_data[0] = "Differential"
                 
