@@ -3,11 +3,14 @@ from pathlib import Path
 from config_types import TMAConfig, HighlightColors
 
 def merge_dicts(defaults: dict, overrides: dict) -> dict:
+    
     merged = {**defaults, **overrides}
     merged["highlightColors"] = {**defaults.get("highlightColors", {}), **overrides.get("highlightColors", {})}
+    
     return merged
 
 def load_config(model_num: int) -> TMAConfig:
+    
     model = f"TMA{model_num}"
 
     script_dir = Path(__file__).resolve().parent

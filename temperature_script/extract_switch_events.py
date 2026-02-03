@@ -37,13 +37,12 @@ class ExtractSwitchEvents:
         }
 
         # Determine number of complete events
-
         complete_event_count = min(len(sessions) for sessions in sessions_by_col.values())
         
         # Process each event
         for event_idx in range(complete_event_count):
 
-            # Collect all rows involved in this event
+            # Collect all rows involved in this event, prevents duplicates
             event_rows = set()
             
             for sessions in sessions_by_col.values():
@@ -79,7 +78,7 @@ class ExtractSwitchEvents:
                 for idx, val in enumerate(row_values):
                     data[headers[idx]].append(val)
 
-            # Calculating the differential (diff)
+            # Calculating the differential (diff) and percent differntial
             diff_row = [None] * len(headers)
             diff_row[0] = "Differential"
             percent_diff_row = [None] * len(headers)
@@ -96,17 +95,14 @@ class ExtractSwitchEvents:
                     diff_row[col_idx - 1] = diff
                     percent_diff_row[col_idx - 1] = (diff / open_pressure) * 100
 
-            
-            # writes the differential into the correct column
-            for idx, val in enumerate(diff_row):
+            for idx, val in enumerate(diff_row):              
                 data[headers[idx]].append(val)
             
-            for idx, val in enumerate(percent_diff_row):
+            for idx, val in enumerate(percent_diff_row):                
                 data[headers[idx]].append(val)
 
-            for header in headers:
+            for header in headers:                
                 data[header].append(None)
-
 
         df = pd.DataFrame(data)
 

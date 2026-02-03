@@ -14,10 +14,9 @@ class CombineRawData:
         self.pressure: float = config.pressure
         self.output_min: float = config.outputMin
         self.output_max: float = config.outputMax
-        self.digital_start_col: int = config.digitalStartCol
         self.daq_meta_data: int = config.daqMetaData
 
-    def compute_pressure(self, voltage: float) -> float:
+    def calculate_pressure(self, voltage: float) -> float:
         """
         Converts T200 output to pressure in psi
         Excel Formula: max((((C/270)-0.004)/(0.016/3000)), 0)
@@ -25,28 +24,29 @@ class CombineRawData:
         """
         outputRange = self.output_max - self.output_min
         pressure = ((voltage / self.resistor) - self.output_min) / (outputRange / self.pressure)
-        return abs(max(pressure, 0))
+        
+        return max(pressure, 0)
 
     def combine_csvs(self, output_file: Optional[str] = None) -> str:
         
-        analog_file = None
-        digital_file = None
+        analog_csv = None
+        digital_csv = None
 
-        # Look in the folder to find the Analog and Digital csv files
-        for folder in os.listdir(self.folder_path):
-            if folder.startswith("Analog") and folder.endswith(".csv"):
-                analog_file = os.path.join(self.folder_path, folder)
-            elif folder.startswith("Digital") and folder.endswith(".csv"):
-                digital_file = os.path.join(self.folder_path, folder)
+        # locate csv files
+        for file in self.folder_path.iterdir():
+            if file.is_file() and file.name.startswith("Analog") and file.suffix == ".csv":
+                analog_csv = file
+            elif file.is_file() and file.name.startswith("Digital") and file.suffix == ".csv":
+                digital_csv = file
 
-        if not analog_file or not digital_file:
+        if not analog_csv or not digital_csv:
             raise FileNotFoundError("Missing Analog or Digital CSV file.")
 
         skip_rows = self.daq_meta_data
         
-        # Read CSVs and skip DAQ metadata
-        df_analog = pd.read_csv(analog_file, skiprows=skip_rows)
-        df_digital = pd.read_csv(digital_file, skiprows=skip_rows)
+        # Read CSVs and skip DAQ metadata, datafram (df)
+        df_analog = pd.read_csv(analog_csv, skiprows=skip_rows)
+        df_digital = pd.read_csv(digital_csv, skiprows=skip_rows)
         
         # Remove row 2 from digital to match analog
         if len(df_digital) >= 1:
@@ -57,17 +57,18 @@ class CombineRawData:
             df_digital = df_digital.iloc[:, 2:]
 
         #Calculate pressure using iloc[:, 2] which selects the 3rd column
-        df_pressure = df_analog.iloc[:, 2].apply(self.compute_pressure).to_frame("Pressure (psi)")
+        df_pressure = df_analog.iloc[:, 2].apply(self.calculate_pressure).to_frame("Pressure (psi)")
 
         df_combined = pd.concat([df_analog, df_pressure, df_digital], axis=1)
 
         # Determine output file
         if output_file is None:
             
-            folder_name = os.path.basename(self.folder_path)
-            # Remove "DAQ_" prefix for naming
-            folder_name = folder_name.replace("DAQ_", "")
-            output_file = os.path.join(os.path.dirname(self.folder_path), f"{folder_name}_Processed.xlsx")
+            file_name = self.folder_path.name.replace("DAQ_", "")
+            output_file = (
+                self.folder_path.parent
+                / f"{file_name}_Processed.xlsx"
+            )
 
         df_combined.to_excel(output_file, index=False)
         
