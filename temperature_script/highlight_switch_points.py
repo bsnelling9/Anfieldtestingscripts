@@ -44,11 +44,13 @@ class HighlightSwitchPoints:
 
                 if prev_val == 1 and cell.value == 0:
                     cell.fill = self.green_fill
-                    self.registry.add_point(HighlightPoint(row, col, True, header_name, cell.value))
+                    point = HighlightPoint(row, col, True, header_name, cell.value)
+                    self.registry.record_event(point)
 
                 elif prev_val == 0 and cell.value == 1:
                     cell.fill = self.yellow_fill
-                    self.registry.add_point(HighlightPoint(row, col, False, header_name, cell.value))
+                    point = HighlightPoint(row, col, False, header_name, cell.value)
+                    self.registry.record_event(point)
 
                 prev_val = cell.value
 

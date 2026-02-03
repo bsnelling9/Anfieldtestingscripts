@@ -1,145 +1,141 @@
 import pandas as pd
 from openpyxl import load_workbook
-from openpyxl.styles import PatternFill
 from highlight_registry import HighlightRegistry
+
 
 class ExtractSwitchEvents:
     def __init__(self, file_path: str, config: dict, registry: HighlightRegistry):
         self.file_path = file_path
         self.config = config
         self.registry = registry
+
         self.wb = load_workbook(file_path)
         self.ws = self.wb.active
 
-        # Columns where digital data starts, column containing pressure, and protected headers
         self.digital_start_col: int = config.digitalStartCol
         self.pressure_col: int = config.pressureCol
         self.protected_headers = config.protectedHeaders
 
-    """
-    This does not work now because the code is now using pandas
-    def copy_fill(self, cell):
-        return PatternFill(
-            start_color=cell.fill.start_color.rgb,
-            end_color=cell.fill.end_color.rgb,
-            fill_type=cell.fill.fill_type
-        ) if cell.fill else None
-    """
     def create_switch_events_sheet(self, sheet_name: str = "SwitchEvents"):
-
-        # Stores all the rows where the switch opens or closes, and sorts them
-        all_rows_set = set()
+        """
+        Builds a SwitchEvents sheet by iterating switch SESSIONS directly
+        instead of reconstructing events from rows.
+        """
+        # -----------------------------
+        # 1. Headers & digital columns
+        # -----------------------------
+        all_data = list(self.ws.values)  # list of tuples
+        headers = all_data[0]
         
-        for col_sessions in self.registry.get_sessions_by_column().values():
-            
-            for session in col_sessions:
-                
-                all_rows_set.add(session.open_point.row)
-                
-                if session.close_point:
-                    all_rows_set.add(session.close_point.row)
+        sessions_by_col = self.registry.get_sessions_by_column()
 
-        all_rows = sorted(all_rows_set)
-
-        # Stores the headers in an array, maybe could use a set as they're unique
-        headers = [self.ws.cell(row=1, column=col).value for col in range(1, self.ws.max_column + 1)]
-
-        # Initialize a dictionary of lists for each column
-        # TMA-7.0 NBR: [],
+        digital_cols = [col for col in range(self.digital_start_col, self.ws.max_column + 1)
+                if col in sessions_by_col]
+        
+        # Output structure for pandas
         data = {header: [] for header in headers}
+       
+        # -----------------------------
+        # 2. Determine number of complete events
+        #    (event index = same index across columns)
+        # -----------------------------
+        complete_event_count = min(
+            len([s for s in sessions if s.is_complete])
+            for sessions in sessions_by_col.values()
+        )
 
-        # this is a dictionary to quickly get a switch value (1/0) at a specified (row,col), which is a key
-        # (97, 5): 0 where 97 is a row and 5 is a column (switch, TMA 7.0)
-        # Avoids the .cell() call to look for the cell everytime
-        row_col_values = {}
-        
-        # list of columns that hold the digital values of the switches
-        digital_cols = list(range(self.digital_start_col, self.ws.max_column + 1))
+        # -----------------------------
+        # 3. Process each event (SESSION-DRIVEN)
+        # -----------------------------
+        for event_idx in range(complete_event_count):
 
-        open_rows_per_col = {col: set() for col in digital_cols}
-        close_rows_per_col = {col: set() for col in digital_cols}
-        
-        for col_idx, col_sessions in self.registry.get_sessions_by_column().items():
+            current_sessions = {
+                col: sessions[event_idx]
+                for col, sessions in sessions_by_col.items()
+            }
 
-            for session in col_sessions:
+            event_rows = sorted(
+                {s.open_point.row for s in current_sessions.values()} |
+                {s.close_point.row for s in current_sessions.values()}
+            )
+
+            """for sessions in sessions_by_col.values():
+                session = sessions[event_idx]
+                event_rows.add(session.open_point.row)
+                event_rows.add(session.close_point.row)
+            """
+            # ---------------------------------
+            # 3a. Write event rows
+            # ---------------------------------
+            for row in event_rows:
                 
-                # store the value for later sheet output
-                row_col_values[(session.open_point.row, col_idx)] = session.open_point.value
-                if session.close_point:
-                    row_col_values[(session.close_point.row, col_idx)] = session.close_point.value
+                row_values = []
 
-                # track which rows are open/closed for differential logic
-                open_rows_per_col[col_idx].add(session.open_point.row)
-                
-                if session.close_point: 
-                    close_rows_per_col[col_idx].add(session.close_point.row)
+                for col_idx, header in enumerate(headers, start=1):
 
-        # --- 5. Fill data dictionary row by row ---
-        event_rows = []
-        event_columns = set()
-        closed_columns_in_event = set()
+                    if header in self.protected_headers:
+                        value = all_data[row - 1][col_idx - 1]
 
-        for row in all_rows:
-            row_data = []
-            
-            for col_idx, header in enumerate(headers, start=1):
-                if header in self.protected_headers:
-                    value = self.ws.cell(row=row, column=col_idx).value
-                elif col_idx in digital_cols:
-                    # Only show 0/1 for switch points, blank otherwise
-                    value = row_col_values.get((row, col_idx), None)
-                else:
-                    value = None
-                row_data.append(value)
+                    elif col_idx in digital_cols:
+                        # Only show 0/1 at actual switch points
+                        value = self.registry.lookup.get((row, col_idx))
+                       
+                    else:
+                        value = None
 
-            for idx, val in enumerate(row_data):
-                data[headers[idx]].append(val)
+                    row_values.append(value)
 
-            # --- 5. Event tracking for differential ---
-            event_rows.append(row)
-           
-            for col_idx in digital_cols:
-                
-                if row in open_rows_per_col[col_idx]:
-                    event_columns.add(col_idx)
-                elif row in close_rows_per_col[col_idx] and col_idx in event_columns:
-                    closed_columns_in_event.add(col_idx)
-
-            if event_columns and event_columns == closed_columns_in_event:
-                
-                diff_row_data = [None] * len(headers)
-                diff_row_data[0] = "Differential"
-                
-                for col_idx in digital_cols:
-                    open_vals = [
-                        self.ws.cell(r, self.pressure_col).value
-                        for r in event_rows if r in open_rows_per_col[col_idx]
-                    ]
-                    closed_vals = [
-                        self.ws.cell(r, self.pressure_col).value
-                        for r in event_rows if r in close_rows_per_col[col_idx]
-                    ]
-                    if open_vals and closed_vals:
-                        diff_row_data[col_idx - 1] = max(open_vals) - min(closed_vals)
-
-                for idx, val in enumerate(diff_row_data):
+                for idx, val in enumerate(row_values):
                     data[headers[idx]].append(val)
 
-                # Blank row after differential
-                for header in headers:
-                    data[header].append(None)
+            # ---------------------------------
+            # 3b. Differential row
+            # ---------------------------------
+            diff_row = [None] * len(headers)
+            diff_row[0] = "Differential"
 
-                # Reset for next event block
-                event_rows.clear()
-                event_columns.clear()
-                closed_columns_in_event.clear()
+            for col_idx in digital_cols:
+                session = sessions_by_col[col_idx][event_idx]
 
+                open_pressure = self.ws.cell(
+                    row=session.open_point.row,
+                    column=self.pressure_col
+                ).value
 
-        # --- 6. Convert to DataFrame and write to Excel ---
+                close_pressure = self.ws.cell(
+                    row=session.close_point.row,
+                    column=self.pressure_col
+                ).value
+
+                if open_pressure is not None and close_pressure is not None:
+                    diff_row[col_idx - 1] = open_pressure - close_pressure
+
+            for idx, val in enumerate(diff_row):
+                data[headers[idx]].append(val)
+
+            # ---------------------------------
+            # 3c. Blank separator row
+            # ---------------------------------
+            for header in headers:
+                data[header].append(None)
+
+        # -----------------------------
+        # 4. Write to Excel
+        # -----------------------------
         df = pd.DataFrame(data)
-        with pd.ExcelWriter(self.file_path, engine='openpyxl', mode='a') as writer:
+
+        with pd.ExcelWriter(self.file_path, engine="openpyxl", mode="a") as writer:
             if sheet_name in writer.book.sheetnames:
                 idx = writer.book.sheetnames.index(sheet_name)
-                std = writer.book.worksheets[idx]
-                writer.book.remove(std)
+                writer.book.remove(writer.book.worksheets[idx])
+
             df.to_excel(writer, sheet_name=sheet_name, index=False)
+
+"""val = self.registry.lookup.get((row, col_idx))
+                        for session in sessions_by_col.get(col_idx, []):
+                            if session.open_point.row == row:
+                                value = session.open_point.value
+                                break
+                            if session.close_point and session.close_point.row == row:
+                                value = session.close_point.value
+                                break"""

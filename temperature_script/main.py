@@ -6,7 +6,7 @@ from highlight_switch_points import HighlightSwitchPoints
 from extract_switch_events import ExtractSwitchEvents
 from highlight_registry import HighlightRegistry
 import time
-#from extract_resgistry import export_registry_in_excel
+from extract_resgistry import export_registry_in_excel
 
 def ask_model_number() -> int:
     while True:
@@ -47,11 +47,10 @@ for folder in folders:
 
     # Highlight switch points (passing the registry)
     start_processing = time.time()
-
    
     highlightSwitchPoints = HighlightSwitchPoints(combined_file, config, registry)
     highlightSwitchPoints.highlight_switch_points()
-
+    
     end_processing = time.time()
     print(f"Processing rows took {end_processing - start_processing:.2f} seconds")
     # Extract switch events (passing the registry)
