@@ -9,16 +9,20 @@ from highlight_registry import HighlightRegistry
 #from extract_registry import export_registry_in_excel
 
 def ask_model_number() -> int:
+    
     while True:
+        
         try:
             user_input = int(input("Enter TMA model number (3–8): "))
             if 3 <= user_input <= 8:
                 return user_input
             print("Model number must be between 3 and 8.")
+        
         except ValueError:
             print("Please enter a valid number.")
 
 def main():
+    
     model_num = ask_model_number()
     MODEL = f"TMA{model_num}"
 
@@ -35,15 +39,12 @@ def main():
     print(f"Found folders: {folders}")
 
     for folder in folders:
-        #folder_path = os.path.join(data_folder, folder)
 
-        # Combine CSVs
         combiner = CombineRawData(folder, config)
         combined_file = combiner.combine_csvs()
 
         registry = HighlightRegistry()
 
-        # Highlight switch points (passing the registry)
         start_processing = time.time()
     
         highlightSwitchPoints = HighlightSwitchPoints(combined_file, config, registry)
@@ -63,7 +64,6 @@ def main():
         #export_registry_in_excel(combined_file, registry)
 
     print("Pipeline complete!")
-
 
 if __name__ == "__main__":
     main()
