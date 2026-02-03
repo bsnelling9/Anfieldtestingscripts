@@ -8,6 +8,7 @@ class HighlightPoint:
     is_open: bool
     header: str
     value: int
+    pressure: float
 
 @dataclass
 class SwitchSession:
@@ -42,7 +43,6 @@ class HighlightRegistry:
             if session is not None:
                 session.close_point = point
                 del self.active[col]
-
 
     def get_sessions_by_column(self):
         return self.sessions

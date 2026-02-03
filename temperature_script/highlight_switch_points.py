@@ -22,6 +22,7 @@ class HighlightSwitchPoints:
             end_color=config.highlightColors.yellow,
             fill_type="solid"
         )
+        
         self.protected_headers = config.protectedHeaders
 
     def highlight_switch_points(self):
@@ -39,17 +40,19 @@ class HighlightSwitchPoints:
             header_name = self.ws.cell(row=1, column=col).value
             prev_val = self.ws.cell(row=2, column=col).value
 
+           
             for row in range(3, self.ws.max_row + 1):
                 cell = self.ws.cell(row=row, column=col)
-
+                pressure = self.ws.cell(row=row, column=self.config.pressureCol).value
+                
                 if prev_val == 1 and cell.value == 0:
                     cell.fill = self.green_fill
-                    point = HighlightPoint(row, col, True, header_name, cell.value)
+                    point = HighlightPoint(row, col, True, header_name, cell.value, pressure)
                     self.registry.record_event(point)
 
                 elif prev_val == 0 and cell.value == 1:
                     cell.fill = self.yellow_fill
-                    point = HighlightPoint(row, col, False, header_name, cell.value)
+                    point = HighlightPoint(row, col, False, header_name, cell.value, pressure)
                     self.registry.record_event(point)
 
                 prev_val = cell.value

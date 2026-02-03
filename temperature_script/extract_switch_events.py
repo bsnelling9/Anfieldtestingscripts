@@ -24,62 +24,66 @@ class ExtractSwitchEvents:
         # -----------------------------
         # 1. Headers & digital columns
         # -----------------------------
-        all_data = list(self.ws.values)  # list of tuples
-        headers = all_data[0]
-        
+    
+        headers = [
+        self.ws.cell(row=1, column=col).value
+        for col in range(1, self.ws.max_column + 1)
+        ]
         sessions_by_col = self.registry.get_sessions_by_column()
-
-        digital_cols = [col for col in range(self.digital_start_col, self.ws.max_column + 1)
-                if col in sessions_by_col]
         
+        digital_cols = list(sessions_by_col.keys()) 
+
         # Output structure for pandas
         data = {header: [] for header in headers}
-       
+
+
+        # Build a quick lookup: row → pressure
+        pressure_per_row = {
+            point.row: point.pressure
+            for point in self.registry.lookup.values()
+        }
+
         # -----------------------------
         # 2. Determine number of complete events
-        #    (event index = same index across columns)
         # -----------------------------
-        complete_event_count = min(
+        """complete_event_count = min(
             len([s for s in sessions if s.is_complete])
             for sessions in sessions_by_col.values()
-        )
+        )"""
 
+        complete_event_count = min(len(sessions) for sessions in sessions_by_col.values())
         # -----------------------------
         # 3. Process each event (SESSION-DRIVEN)
         # -----------------------------
         for event_idx in range(complete_event_count):
 
-            current_sessions = {
-                col: sessions[event_idx]
-                for col, sessions in sessions_by_col.items()
-            }
-
-            event_rows = sorted(
-                {s.open_point.row for s in current_sessions.values()} |
-                {s.close_point.row for s in current_sessions.values()}
-            )
-
-            """for sessions in sessions_by_col.values():
+            # Collect all rows involved in this event
+            event_rows = set()
+            for sessions in sessions_by_col.values():
                 session = sessions[event_idx]
                 event_rows.add(session.open_point.row)
                 event_rows.add(session.close_point.row)
-            """
+
             # ---------------------------------
             # 3a. Write event rows
             # ---------------------------------
-            for row in event_rows:
-                
+            for row in sorted(event_rows):
                 row_values = []
 
                 for col_idx, header in enumerate(headers, start=1):
 
                     if header in self.protected_headers:
-                        value = all_data[row - 1][col_idx - 1]
+                        # Only case we still need ws.cell
+                        value = self.ws.cell(row=row, column=col_idx).value
 
                     elif col_idx in digital_cols:
-                        # Only show 0/1 at actual switch points
-                        value = self.registry.lookup.get((row, col_idx))
-                       
+                        # Lookup digital value directly from registry
+                        point = self.registry.lookup.get((row, col_idx))
+                        value = point.value if point else None
+
+                    elif col_idx == self.pressure_col:
+                        value = pressure_per_row.get(row)
+
                     else:
                         value = None
 
@@ -97,15 +101,8 @@ class ExtractSwitchEvents:
             for col_idx in digital_cols:
                 session = sessions_by_col[col_idx][event_idx]
 
-                open_pressure = self.ws.cell(
-                    row=session.open_point.row,
-                    column=self.pressure_col
-                ).value
-
-                close_pressure = self.ws.cell(
-                    row=session.close_point.row,
-                    column=self.pressure_col
-                ).value
+                open_pressure = pressure_per_row.get(session.open_point.row)
+                close_pressure = pressure_per_row.get(session.close_point.row)
 
                 if open_pressure is not None and close_pressure is not None:
                     diff_row[col_idx - 1] = open_pressure - close_pressure
@@ -130,12 +127,3 @@ class ExtractSwitchEvents:
                 writer.book.remove(writer.book.worksheets[idx])
 
             df.to_excel(writer, sheet_name=sheet_name, index=False)
-
-"""val = self.registry.lookup.get((row, col_idx))
-                        for session in sessions_by_col.get(col_idx, []):
-                            if session.open_point.row == row:
-                                value = session.open_point.value
-                                break
-                            if session.close_point and session.close_point.row == row:
-                                value = session.close_point.value
-                                break"""
