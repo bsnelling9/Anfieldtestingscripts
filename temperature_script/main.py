@@ -36,7 +36,9 @@ def main():
     # List DAQ folders
     folders = [folder for folder in data_folder.iterdir() if folder.name.startswith("DAQ_")]
 
-    print(f"Found folders: {folders}")
+    print("Found folders:")
+    for i, folder in enumerate(folders, start=1):
+        print(f"{i}. {folder.name}")
 
     for folder in folders:
 
@@ -51,19 +53,19 @@ def main():
         highlightSwitchPoints.highlight_switch_points()
         
         end_processing = time.time()
-        print(f"Processing rows took {end_processing - start_processing:.2f} seconds")
+        print(f"Processing rows for {folder.name} took: {end_processing - start_processing:.2f} seconds")
         
         start_processing = time.time()
         extractor = ExtractSwitchEvents(combined_file, config, registry)
         extractor.create_switch_events_sheet()
         
         end_processing = time.time()
-        print(f"ExtractSwitchEvents took {end_processing - start_processing:.2f} seconds")
+        print(f"Calculating differential for {folder.name} took: {end_processing - start_processing:.2f} seconds")
 
         # Export registry for inspection in the same Excel file
         #export_registry_in_excel(combined_file, registry)
 
-    print("Pipeline complete!")
+    print("Data processing complete!")
 
 if __name__ == "__main__":
     main()
