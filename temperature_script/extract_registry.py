@@ -35,23 +35,3 @@ def export_registry_in_excel(file_path: str, registry: HighlightRegistry, sheet_
             ])
     wb.save(file_path)
     print(f"Registry exported in '{sheet_name}' sheet of {file_path}")
-"""
-    # --- Optional: Add sessions summary ---
-    ws.append([])  # blank row
-    ws.append(["Sessions Summary"])
-    ws.append(["Column", "Header", "GREEN Row", "YELLOW Row", "Complete?"])
-    for col_idx, sessions in registry.columns.items():
-        for session in sessions:
-            green_row = session.green_point.row if session.green_point else None
-            yellow_row = session.yellow_point.row if session.yellow_point else None
-            ws.append([
-                col_idx,
-                session.green_point.header,
-                green_row,
-                yellow_row,
-                session.is_complete
-            ])
-
-    wb.save(file_path)
-    print(f"Registry exported in '{sheet_name}' sheet of {file_path}")
-    """
