@@ -8,6 +8,7 @@ class HighlightPoint:
     is_open: bool
     header: str
     value: int
+    pressure: float
 
 @dataclass
 class SwitchSession:
@@ -20,21 +21,28 @@ class SwitchSession:
 
 class HighlightRegistry:
     def __init__(self):
-        self.columns: dict[int, list[SwitchSession]] = {}
+        self.sessions: dict[int, list[SwitchSession]] = {}
+        
+        self.active: dict[int, SwitchSession] = {}
+        self.lookup: dict[tuple[int,int], HighlightPoint] = {}
 
-    def add_point(self, point: HighlightPoint):
+    def record_event(self, point: HighlightPoint):
+               
+        key = (point.row, point.col)
+        
+        self.lookup[key] = point
+
         col = point.col
-        if col not in self.columns:
-            self.columns[col] = []
-
         if point.is_open:
-            self.columns[col].append(SwitchSession(open_point=point))
+            session = SwitchSession(open_point=point)
+            self.active[col] = session
+            self.sessions.setdefault(col, []).append(session)
+        
         else:
-            # Attach CLOSE to most recent incomplete OPEN
-            for session in reversed(self.columns[col]):
-                if session.close_point is None:
-                    session.close_point = point
-                    break
+            session = self.active.get(col)
+            if session is not None:
+                session.close_point = point
+                del self.active[col]
 
     def get_sessions_by_column(self):
-        return self.columns
+        return self.sessions
