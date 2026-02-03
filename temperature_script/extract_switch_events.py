@@ -17,18 +17,12 @@ class ExtractSwitchEvents:
         self.protected_headers = config.protectedHeaders
 
     def create_switch_events_sheet(self, sheet_name: str = "SwitchEvents"):
-        """
-        Builds a SwitchEvents sheet by iterating switch SESSIONS directly
-        instead of reconstructing events from rows.
-        """
-        # -----------------------------
-        # 1. Headers & digital columns
-        # -----------------------------
-    
+
         headers = [
-        self.ws.cell(row=1, column=col).value
-        for col in range(1, self.ws.max_column + 1)
+            self.ws.cell(row=1, column=col).value
+            for col in range(1, self.ws.max_column + 1)
         ]
+
         sessions_by_col = self.registry.get_sessions_by_column()
         
         digital_cols = list(sessions_by_col.keys()) 
@@ -36,38 +30,31 @@ class ExtractSwitchEvents:
         # Output structure for pandas
         data = {header: [] for header in headers}
 
-
         # Build a quick lookup: row → pressure
         pressure_per_row = {
             point.row: point.pressure
             for point in self.registry.lookup.values()
         }
 
-        # -----------------------------
-        # 2. Determine number of complete events
-        # -----------------------------
-        """complete_event_count = min(
-            len([s for s in sessions if s.is_complete])
-            for sessions in sessions_by_col.values()
-        )"""
+        # Determine number of complete events
 
         complete_event_count = min(len(sessions) for sessions in sessions_by_col.values())
-        # -----------------------------
-        # 3. Process each event (SESSION-DRIVEN)
-        # -----------------------------
+        
+        # Process each event
         for event_idx in range(complete_event_count):
 
             # Collect all rows involved in this event
             event_rows = set()
+            
             for sessions in sessions_by_col.values():
+                
                 session = sessions[event_idx]
                 event_rows.add(session.open_point.row)
                 event_rows.add(session.close_point.row)
 
-            # ---------------------------------
-            # 3a. Write event rows
-            # ---------------------------------
+            # Write event rows
             for row in sorted(event_rows):
+                
                 row_values = []
 
                 for col_idx, header in enumerate(headers, start=1):
@@ -92,33 +79,35 @@ class ExtractSwitchEvents:
                 for idx, val in enumerate(row_values):
                     data[headers[idx]].append(val)
 
-            # ---------------------------------
-            # 3b. Differential row
-            # ---------------------------------
+            # Calculating the differential (diff)
             diff_row = [None] * len(headers)
             diff_row[0] = "Differential"
-
+            percent_diff_row = [None] * len(headers)
+            percent_diff_row[0] = "Percent differential (%)"
+            
             for col_idx in digital_cols:
+                
                 session = sessions_by_col[col_idx][event_idx]
-
                 open_pressure = pressure_per_row.get(session.open_point.row)
                 close_pressure = pressure_per_row.get(session.close_point.row)
 
                 if open_pressure is not None and close_pressure is not None:
-                    diff_row[col_idx - 1] = open_pressure - close_pressure
+                    diff = open_pressure - close_pressure
+                    diff_row[col_idx - 1] = diff
+                    percent_diff_row[col_idx - 1] = (diff / open_pressure) * 100
 
+            
+            # writes the differential into the correct column
             for idx, val in enumerate(diff_row):
                 data[headers[idx]].append(val)
+            
+            for idx, val in enumerate(percent_diff_row):
+                data[headers[idx]].append(val)
 
-            # ---------------------------------
-            # 3c. Blank separator row
-            # ---------------------------------
             for header in headers:
                 data[header].append(None)
 
-        # -----------------------------
-        # 4. Write to Excel
-        # -----------------------------
+
         df = pd.DataFrame(data)
 
         with pd.ExcelWriter(self.file_path, engine="openpyxl", mode="a") as writer:
