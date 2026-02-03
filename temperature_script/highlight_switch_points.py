@@ -6,10 +6,12 @@ class HighlightSwitchPoints:
     def __init__(self, file_path: str, config: dict, registry: HighlightRegistry):
         self.file_path = file_path
         self.config = config
-        self.registry = registry  # <--- NEW: The shared data store
-        self.wb = load_workbook(file_path)
-        self.ws = self.wb.active
+        self.registry = registry 
         
+        # Load workbook (data_only=True to get values, formulas evaluated)
+        self.wb = load_workbook(file_path, data_only=True)
+        self.ws = self.wb.active
+
         # Create fills from config
         self.green_fill = PatternFill(
             start_color=config.highlightColors.green,
@@ -27,34 +29,54 @@ class HighlightSwitchPoints:
 
     def highlight_switch_points(self):
         """
-        Detects switch is Open 1→0 as green, and closed 0→1 as yellow.
-        Highlights cells, and records the state in registry.
+        Highlights switch points using read_only + write_only mode for maximum performance.
+        Open (1→0) as green, Closed (0→1) as yellow.
         """
+        # 1. Open workbook in read_only mode
+        data = list(self.ws.iter_rows(values_only=True))
+        if len(data) < 2:
+            return
+
+        headers = data[0]
+        pressure_col_idx = self.config.pressureCol - 1  # zero-based
+
         # Identify digital columns
-        digital_cols = [
-            col for col in range(1, self.ws.max_column + 1)
-            if self.ws.cell(row=1, column=col).value not in self.protected_headers
+        digital_indices = [
+            i for i, header in enumerate(headers) if header not in self.protected_headers
         ]
 
-        for col in digital_cols:
-            header_name = self.ws.cell(row=1, column=col).value
-            prev_val = self.ws.cell(row=2, column=col).value
+        # -------------------------------
+        # 2. Collect switch points in memory
+        # -------------------------------
+        highlights_to_apply = []
+        prev_vals = {col_idx: data[1][col_idx] for col_idx in digital_indices}
 
-           
-            for row in range(3, self.ws.max_row + 1):
-                cell = self.ws.cell(row=row, column=col)
-                pressure = self.ws.cell(row=row, column=self.config.pressureCol).value
+        for row_idx in range(2, len(data)):
+            row_values = data[row_idx]
+            
+            for col_idx in digital_indices:
+                curr_val = row_values[col_idx]
+                pressure = row_values[pressure_col_idx]
+
+                if prev_vals[col_idx] == 1 and curr_val == 0:
+                    highlights_to_apply.append(
+                        (row_idx + 1, col_idx + 1, self.green_fill, True, curr_val, pressure, headers[col_idx])
+                    )
                 
-                if prev_val == 1 and cell.value == 0:
-                    cell.fill = self.green_fill
-                    point = HighlightPoint(row, col, True, header_name, cell.value, pressure)
-                    self.registry.record_event(point)
+                elif prev_vals[col_idx] == 0 and curr_val == 1:
+                    highlights_to_apply.append(
+                        (row_idx + 1, col_idx + 1, self.yellow_fill, False, curr_val, pressure, headers[col_idx])
+                    )
 
-                elif prev_val == 0 and cell.value == 1:
-                    cell.fill = self.yellow_fill
-                    point = HighlightPoint(row, col, False, header_name, cell.value, pressure)
-                    self.registry.record_event(point)
+                prev_vals[col_idx] = curr_val
 
-                prev_val = cell.value
+        # -------------------------------
+        # 3. Apply highlights and update registry
+        # -------------------------------
+        for r, c, fill, is_open, val, pressure, header in highlights_to_apply:
+            
+            self.ws.cell(row=r, column=c).fill = fill
+            point = HighlightPoint(r, c, is_open, header, val, pressure)
+            self.registry.record_event(point)
 
         self.wb.save(self.file_path)
