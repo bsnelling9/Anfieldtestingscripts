@@ -2,6 +2,10 @@ import json
 from pathlib import Path
 from config_types import TMAConfig, HighlightColors
 
+def merge_dicts(defaults: dict, overrides: dict) -> dict:
+    merged = {**defaults, **overrides}
+    merged["highlightColors"] = {**defaults.get("highlightColors", {}), **overrides.get("highlightColors", {})}
+    return merged
 
 def load_config(model_num: int) -> TMAConfig:
     model = f"TMA{model_num}"
@@ -27,15 +31,7 @@ def load_config(model_num: int) -> TMAConfig:
 
     defaults = json.loads(default_path.read_text())
     overrides = json.loads(model_path.read_text())
-
-    # Shallow merge
-    merged = {**defaults, **overrides}
-
-    # Nested merge for highlightColors
-    merged["highlightColors"] = {
-        **defaults.get("highlightColors", {}),
-        **overrides.get("highlightColors", {}),
-    }
+    merged = merge_dicts(defaults, overrides)
 
     return TMAConfig(
         model=merged["model"],

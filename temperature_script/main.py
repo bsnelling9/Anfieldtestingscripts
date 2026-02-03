@@ -1,12 +1,12 @@
-import os
+import time
 from load_config import load_config
 from pathlib import Path
 from combine_raw_data import CombineRawData
 from highlight_switch_points import HighlightSwitchPoints
 from extract_switch_events import ExtractSwitchEvents
 from highlight_registry import HighlightRegistry
-import time
-from extract_resgistry import export_registry_in_excel
+#extract registry is on only used for testing
+#from extract_registry import export_registry_in_excel
 
 def ask_model_number() -> int:
     while True:
@@ -18,51 +18,52 @@ def ask_model_number() -> int:
         except ValueError:
             print("Please enter a valid number.")
 
-model_num = ask_model_number()
-MODEL = f"TMA{model_num}"
+def main():
+    model_num = ask_model_number()
+    MODEL = f"TMA{model_num}"
 
-# Path to this script
-script_dir = Path(__file__).resolve().parent
+    # Path to this script
+    script_dir = Path(__file__).resolve().parent
 
-config = load_config(model_num)
-# Relative path to data
-data_folder = os.path.normpath(os.path.join(
-    script_dir, "..", "..", "Temperature_Performance", "TMA DAQ", MODEL
-))
+    data_folder = (script_dir / ".." / ".." / "Temperature_Performance" / "TMA DAQ" / MODEL).resolve()
 
-# List DAQ folders
-folders = [f for f in os.listdir(data_folder) if f.startswith("DAQ_")]
-
-print(f"Found folders: {folders}")
-
-for folder in folders:
-    folder_path = os.path.join(data_folder, folder)
-
-    # Combine CSVs
-    combiner = CombineRawData(folder_path, config)
-    combined_file = combiner.combine_csvs()
-
-    # --- NEW: Initialize the Registry for THIS folder ---
-    registry = HighlightRegistry()
-
-    # Highlight switch points (passing the registry)
-    start_processing = time.time()
-   
-    highlightSwitchPoints = HighlightSwitchPoints(combined_file, config, registry)
-    highlightSwitchPoints.highlight_switch_points()
+    config = load_config(model_num)
     
-    end_processing = time.time()
-    print(f"Processing rows took {end_processing - start_processing:.2f} seconds")
-    # Extract switch events (passing the registry)
-    
-    start_processing = time.time()
-    extractor = ExtractSwitchEvents(combined_file, config, registry)
-    extractor.create_switch_events_sheet()
-    
-    end_processing = time.time()
-    print(f"ExtractSwitchEvents took {end_processing - start_processing:.2f} seconds")
+    # List DAQ folders
+    folders = [folder for folder in data_folder.iterdir() if folder.name.startswith("DAQ_")]
 
-    # Export registry for inspection in the same Excel file
-    #export_registry_in_excel(combined_file, registry)
+    print(f"Found folders: {folders}")
 
-print("Pipeline complete!")
+    for folder in folders:
+        #folder_path = os.path.join(data_folder, folder)
+
+        # Combine CSVs
+        combiner = CombineRawData(folder, config)
+        combined_file = combiner.combine_csvs()
+
+        registry = HighlightRegistry()
+
+        # Highlight switch points (passing the registry)
+        start_processing = time.time()
+    
+        highlightSwitchPoints = HighlightSwitchPoints(combined_file, config, registry)
+        highlightSwitchPoints.highlight_switch_points()
+        
+        end_processing = time.time()
+        print(f"Processing rows took {end_processing - start_processing:.2f} seconds")
+        
+        start_processing = time.time()
+        extractor = ExtractSwitchEvents(combined_file, config, registry)
+        extractor.create_switch_events_sheet()
+        
+        end_processing = time.time()
+        print(f"ExtractSwitchEvents took {end_processing - start_processing:.2f} seconds")
+
+        # Export registry for inspection in the same Excel file
+        #export_registry_in_excel(combined_file, registry)
+
+    print("Pipeline complete!")
+
+
+if __name__ == "__main__":
+    main()

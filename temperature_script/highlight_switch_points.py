@@ -28,11 +28,8 @@ class HighlightSwitchPoints:
         self.protected_headers = config.protectedHeaders
 
     def highlight_switch_points(self):
-        """
-        Highlights switch points using read_only + write_only mode for maximum performance.
-        Open (1→0) as green, Closed (0→1) as yellow.
-        """
-        # 1. Open workbook in read_only mode
+
+        # Open workbook 
         data = list(self.ws.iter_rows(values_only=True))
         if len(data) < 2:
             return
@@ -45,9 +42,7 @@ class HighlightSwitchPoints:
             i for i, header in enumerate(headers) if header not in self.protected_headers
         ]
 
-        # -------------------------------
-        # 2. Collect switch points in memory
-        # -------------------------------
+        # Collect switch points in memory
         highlights_to_apply = []
         prev_vals = {col_idx: data[1][col_idx] for col_idx in digital_indices}
 
@@ -70,9 +65,7 @@ class HighlightSwitchPoints:
 
                 prev_vals[col_idx] = curr_val
 
-        # -------------------------------
-        # 3. Apply highlights and update registry
-        # -------------------------------
+        # Apply highlights and update registry
         for r, c, fill, is_open, val, pressure, header in highlights_to_apply:
             
             self.ws.cell(row=r, column=c).fill = fill
