@@ -2,19 +2,14 @@ from openpyxl import load_workbook
 from highlight_registry import HighlightRegistry
 
 def export_registry_in_excel(file_path: str, registry: HighlightRegistry, sheet_name="RegistryExport"):
-    """
-    Export HighlightRegistry points and sessions into the same Excel workbook.
-    Fully compatible with column-based HighlightRegistry.
-    """
+ 
     wb = load_workbook(file_path)
 
-    # Delete the sheet if it already exists
     if sheet_name in wb.sheetnames:
         del wb[sheet_name]
 
     ws = wb.create_sheet(sheet_name)
 
-    # --- Write all HighlightPoints ---
     ws.append(["Row", "Column", "Header", "Is Open Circuit", "Value"])
     for col_idx, sessions in registry.columns.items():
         for session in sessions:

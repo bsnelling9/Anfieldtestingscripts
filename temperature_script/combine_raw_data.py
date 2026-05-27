@@ -32,7 +32,6 @@ class CombineRawData:
         analog_csv = None
         digital_csv = None
 
-        # locate csv files
         for file in self.folder_path.iterdir():
             if file.is_file() and file.name.startswith("Analog") and file.suffix == ".csv":
                 analog_csv = file
@@ -44,24 +43,19 @@ class CombineRawData:
 
         skip_rows = self.daq_meta_data
         
-        # Read CSVs and skip DAQ metadata, datafram (df)
         df_analog = pd.read_csv(analog_csv, skiprows=skip_rows)
         df_digital = pd.read_csv(digital_csv, skiprows=skip_rows)
         
-        # Remove row 2 from digital to match analog
         if len(df_digital) >= 1:
             df_digital = df_digital.drop(index=0).reset_index(drop=True)
         
-        # removes repeated columns in the digital csv
         if df_digital.shape[1] > 2:
             df_digital = df_digital.iloc[:, 2:]
 
-        #Calculate pressure using iloc[:, 2] which selects the 3rd column
         df_pressure = df_analog.iloc[:, 2].apply(self.calculate_pressure).to_frame("Pressure (psi)")
 
         df_combined = pd.concat([df_analog, df_pressure, df_digital], axis=1)
 
-        # Determine output file
         if output_file is None:
             
             file_name = self.folder_path.name.replace("DAQ_", "")

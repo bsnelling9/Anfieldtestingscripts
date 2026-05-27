@@ -18,7 +18,6 @@ class CreateCleanedSheet:
 
         ws_out = self.wb.create_sheet(sheet_name)
 
-        # Copy header
         for col in range(1, self.ws.max_column + 1):
             ws_out.cell(row=1, column=col).value = self.ws.cell(row=1, column=col).value
 
