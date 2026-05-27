@@ -27,22 +27,17 @@ class ExtractSwitchEvents:
         
         digital_cols = list(sessions_by_col.keys()) 
 
-        # Output structure for pandas
         data = {header: [] for header in headers}
 
-        # Build a quick lookup: row → pressure
         pressure_per_row = {
             point.row: point.pressure
             for point in self.registry.lookup.values()
         }
 
-        # Determine number of complete events
         complete_event_count = min(len(sessions) for sessions in sessions_by_col.values())
-        
-        # Process each event
+     
         for event_idx in range(complete_event_count):
 
-            # Collect all rows involved in this event, prevents duplicates
             event_rows = set()
             
             for sessions in sessions_by_col.values():
@@ -51,7 +46,6 @@ class ExtractSwitchEvents:
                 event_rows.add(session.open_point.row)
                 event_rows.add(session.close_point.row)
 
-            # Write event rows
             for row in sorted(event_rows):
                 
                 row_values = []
@@ -59,11 +53,11 @@ class ExtractSwitchEvents:
                 for col_idx, header in enumerate(headers, start=1):
 
                     if header in self.protected_headers:
-                        # Only case we still need ws.cell
+
                         value = self.ws.cell(row=row, column=col_idx).value
 
                     elif col_idx in digital_cols:
-                        # Lookup digital value directly from registry
+
                         point = self.registry.lookup.get((row, col_idx))
                         value = point.value if point else None
 
@@ -78,7 +72,7 @@ class ExtractSwitchEvents:
                 for idx, val in enumerate(row_values):
                     data[headers[idx]].append(val)
 
-            # Calculating the differential (diff) and percent differntial
+
             diff_row = [None] * len(headers)
             diff_row[0] = "Differential"
             percent_diff_row = [None] * len(headers)
