@@ -1,5 +1,5 @@
-from dataclasses import dataclass
-from typing import List
+from dataclasses import dataclass, field
+from typing import List, Optional
 
 
 @dataclass(frozen=True)
@@ -15,7 +15,7 @@ class TMAConfig:
     pressure: int
 
     outputType: str
-    resistor: float
+    resistor: Optional[float]
     outputMin: float
     outputMax: float
 
@@ -25,3 +25,5 @@ class TMAConfig:
 
     highlightColors: HighlightColors
     protectedHeaders: List[str]
+
+    transducers: dict = field(default_factory=dict)

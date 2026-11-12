@@ -8,11 +8,9 @@ class HighlightSwitchPoints:
         self.config = config
         self.registry = registry 
         
-        # Load workbook (data_only=True to get values, formulas evaluated)
         self.wb = load_workbook(file_path, data_only=True)
         self.ws = self.wb.active
 
-        # Create fills from config
         self.green_fill = PatternFill(
             start_color=config.highlightColors.green,
             end_color=config.highlightColors.green,
@@ -29,7 +27,6 @@ class HighlightSwitchPoints:
 
     def highlight_switch_points(self):
 
-        # Open workbook 
         data = list(self.ws.iter_rows(values_only=True))
         if len(data) < 2:
             return
@@ -37,12 +34,11 @@ class HighlightSwitchPoints:
         headers = data[0]
         pressure_col_idx = self.config.pressureCol - 1  # zero-based
 
-        # Identify digital columns
         digital_indices = [
-            i for i, header in enumerate(headers) if header not in self.protected_headers
+            i for i, header in enumerate(headers)
+            if i > pressure_col_idx and header not in self.protected_headers
         ]
 
-        # Collect switch points in memory
         highlights_to_apply = []
         prev_vals = {col_idx: data[1][col_idx] for col_idx in digital_indices}
 
@@ -65,7 +61,6 @@ class HighlightSwitchPoints:
 
                 prev_vals[col_idx] = curr_val
 
-        # Apply highlights and update registry
         for r, c, fill, is_open, val, pressure, header in highlights_to_apply:
             
             self.ws.cell(row=r, column=c).fill = fill

@@ -1,20 +1,33 @@
 {
-  "outputType" : "Current",
-  "resistor" : 270,
+  "outputType": "Current",
+  "resistor": 270,
   "outputMin": 0.004,
-  "outputMax": 0.020,
+  "outputMax": 0.02,
   "digitalStartCol": 4,
-  "daqMetaData" : 6,
-  "pressureCol" : 4,
+  "daqMetaData": 6,
+  "pressureCol": 4,
   "highlightColors": {
     "green": "FFB6E7B9",
     "yellow": "FFFDFD96"
   },
-  "protectedHeaders" : [
+  "protectedHeaders": [
     "Sample",
     "Time (s)",
     "Date/Time",
     "T200-5000P (V)"
-  ]
+  ],
+  "transducers": {
+    "T200-5000P (V)": {
+      "outputType": "Current",
+      "resistor": 270,
+      "outputMin": 0.004,
+      "outputMax": 0.02
+    },
+    "APT10-230 (V)": {
+      "outputType": "Voltage",
+      "outputMin": 0,
+      "outputMax": 10,
+      "pressure": 40
+    }
+  }
 }
-

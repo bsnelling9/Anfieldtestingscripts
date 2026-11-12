@@ -38,6 +38,10 @@ class ExtractSwitchEvents:
      
         for event_idx in range(complete_event_count):
 
+            if any(sessions[event_idx].close_point is None for sessions in sessions_by_col.values()):
+                print(f"  Data ended before event {event_idx + 1} closed - stopping here.")
+                break
+
             event_rows = set()
             
             for sessions in sessions_by_col.values():
@@ -52,7 +56,7 @@ class ExtractSwitchEvents:
 
                 for col_idx, header in enumerate(headers, start=1):
 
-                    if header in self.protected_headers:
+                    if col_idx < self.pressure_col or header in self.protected_headers:
 
                         value = self.ws.cell(row=row, column=col_idx).value
 
